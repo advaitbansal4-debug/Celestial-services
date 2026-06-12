@@ -24,85 +24,7 @@ const {
 const TOKEN     = process.env.DISCORD_BOT_TOKEN;
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const fs = require('fs');
-const fs = require('fs');
-const { Client, Collection, GatewayIntentBits } = require('discord.js');
-const token = process.env.DISCORD_TOKEN;
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-
-// Load commands
-client.commands = new Collection();
-const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
-
-for (const file of commandFiles) {
-    const command = require(`./commands/${file}`);
-    client.commands.set(command.data.name, command);
-}
-
-// When bot is ready
-client.once('ready', () => {
-    console.log(`✅ Bot logged in as ${client.user.tag}`);
-    
-    // Register slash commands
-    const commands = client.commands.map(cmd => cmd.data.toJSON());
-    client.application.commands.set(commands);
-});
-
-// When slash command is used
-client.on('interactionCreate', async (interaction) => {
-    if (!interaction.isChatInputCommand()) return;
-
-    const command = client.commands.get(interaction.commandName);
-    if (!command) return;
-
-    try {
-        await command.execute(interaction);
-    } catch (error) {
-        console.error(error);
-        await interaction.reply({ content: '❌ Error executing command', ephemeral: true });
-    }
-});
-
-client.login(token);
-const { Client, Collection, GatewayIntentBits } = require('discord.js');
-const token = process.env.DISCORD_TOKEN;
-
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-
-// Load commands
-client.commands = new Collection();
-const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
-
-for (const file of commandFiles) {
-    const command = require(`./commands/${file}`);
-    client.commands.set(command.data.name, command);
-}
-
-// When bot is ready
-client.once('ready', () => {
-    console.log(`✅ Bot logged in as ${client.user.tag}`);
-    
-    // Register slash commands
-    const commands = client.commands.map(cmd => cmd.data.toJSON());
-    client.application.commands.set(commands);
-});
-
-// When slash command is used
-client.on('interactionCreate', async (interaction) => {
-    if (!interaction.isChatInputCommand()) return;
-
-    const command = client.commands.get(interaction.commandName);
-    if (!command) return;
-
-    try {
-        await command.execute(interaction);
-    } catch (error) {
-        console.error(error);
-        await interaction.reply({ content: '❌ Error executing command', ephemeral: true });
-    }
-});
-
-client.login(token);
 if (!TOKEN || !CLIENT_ID) {
   console.error("ERROR: Set DISCORD_BOT_TOKEN and DISCORD_CLIENT_ID environment variables.");
   process.exit(1);
@@ -184,10 +106,10 @@ async function startWordGame(channelId, sendFn) {
     const game = activeWordGames.get(channelId);
     if (!game) return;
     game.revealed++;
-    const hint = word.substring(0, game.revealed) + "\\_".repeat(word.length - game.revealed);
+    const hint = game.word.substring(0, game.revealed) + "\\_".repeat(game.word.length - game.revealed);
     await sendFn(`💡 Hint: \`${hint}\``);
-    if (game.revealed >= word.length) {
-      await sendFn(`❌ Nobody guessed it! The word was: **${word}**`);
+    if (game.revealed >= game.word.length) {
+      await sendFn(`❌ Nobody guessed it! The word was: **${game.word}**`);
       clearInterval(game.interval);
       activeWordGames.delete(channelId);
     }
@@ -530,8 +452,12 @@ async function handleSlash(interaction) {
     } else {
       const pct  = Math.floor(Math.random()*16)+10;
       const fine = Math.max(1, Math.floor(getBalance(userId)*pct/100));
-      if (deductCoins(userId, fine)) { addCoins(target.id, fine); await interaction.reply(`🚨 Caught! Paid **${fine} coin** fine (${pct}%) to <@${target.id}>.\n💰 Balance: **${getBalance(userId)} coins**`); }
-      else await interaction.reply(`🚨 Caught and couldn't pay the fine!\n💰 Balance: **${getBalance(userId)} coins**`);
+      if (deductCoins(userId, fine)) { 
+        addCoins(target.id, fine); 
+        await interaction.reply(`🚨 Caught! Paid **${fine} coin** fine (${pct}%) to <@${target.id}>.\n💰 Balance: **${getBalance(userId)} coins**`);
+      } else {
+        await interaction.reply(`🚨 Caught and couldn't pay the fine!\n💰 Balance: **${getBalance(userId)} coins**`);
+      }
     }
     return;
   }
