@@ -13,3 +13,9 @@
     "node": ">=18"
   }
 }
+{
+  "dependencies": {
+    "discord.js": "^14.0.0",
+    "quick.db": "^9.0.0"
+  }
+}
