@@ -1,0 +1,92 @@
+const {
+    SlashCommandBuilder,
+    PermissionFlagsBits,
+    EmbedBuilder
+} = require("discord.js");
+const fs = require("fs");
+const path = require("path");
+
+const dataPath = path.join(__dirname, "../jailedUsers.json");
+
+if (!fs.existsSync(dataPath)) {
+    fs.writeFileSync(dataPath, JSON.stringify({}, null, 2));
+}
+
+module.exports = {
+    data: new SlashCommandBuilder()
+        .setName("jail")
+        .setDescription("Jail a member and save their roles.")
+        .addUserOption(option =>
+            option
+                .setName("user")
+                .setDescription("User to jail")
+                .setRequired(true)
+        )
+        .addStringOption(option =>
+            option
+                .setName("reason")
+                .setDescription("Reason")
+                .setRequired(false)
+        )
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+    async execute(interaction) {
+
+        const member = interaction.options.getMember("user");
+        const reason = interaction.options.getString("reason") || "No reason provided";
+
+        if (!member)
+            return interaction.reply({
+                content: "❌ Member not found.",
+                ephemeral: true
+            });
+
+        if (member.id === interaction.user.id)
+            return interaction.reply({
+                content: "❌ You cannot jail yourself.",
+                ephemeral: true
+            });
+
+        if (member.permissions.has(PermissionFlagsBits.Administrator))
+            return interaction.reply({
+                content: "❌ You cannot jail an administrator.",
+                ephemeral: true
+            });
+
+        const jailRole = interaction.guild.roles.cache.find(
+            r => r.name === "JAILED"
+        );
+
+        if (!jailRole)
+            return interaction.reply({
+                content: "❌ Create a role named **JAILED** first.",
+                ephemeral: true
+            });
+
+        const db = JSON.parse(fs.readFileSync(dataPath));
+
+        db[member.id] = member.roles.cache
+            .filter(role =>
+                role.id !== interaction.guild.id &&
+                role.id !== jailRole.id
+            )
+            .map(role => role.id);
+
+        fs.writeFileSync(dataPath, JSON.stringify(db, null, 2));
+
+        await member.roles.set([jailRole]);
+
+        const embed = new EmbedBuilder()
+            .setColor("Red")
+            .setTitle("🔒 Member Jailed")
+            .addFields(
+                { name: "User", value: `${member.user.tag}`, inline: true },
+                { name: "Moderator", value: `${interaction.user.tag}`, inline: true },
+                { name: "Reason", value: reason }
+            )
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed] });
+
+    }
+};
